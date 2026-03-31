@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚢 Buoy - Image Update Dashboard</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-logo">⚓</div>
+            <div class="header-content">
+                <h1>Buoy - Image Update Dashboard</h1>
+                <p class="subtitle">Real-time Kubernetes Image Monitoring</p>
+            </div>
+        </header>
+
+        <div class="filters">
+            <div class="filter-group">
+                <label>Namespace:</label>
+                <select id="namespaceFilter" onchange="filterResources()">
+                    <option value="all">All Namespaces</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Status:</label>
+                <select id="statusFilter" onchange="filterResources()">
+                    <option value="all">All</option>
+                    <option value="pending">Pending Approval</option>
+                    <option value="available">Update Available</option>
+                    <option value="uptodate">Up to Date</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Kind:</label>
+                <select id="kindFilter" onchange="filterResources()">
+                    <option value="all">All Types</option>
+                    <option value="Deployment">Deployments</option>
+                    <option value="StatefulSet">StatefulSets</option>
+                    <option value="DaemonSet">DaemonSets</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="resources" id="resourceList">
+            {{range .}}
+            <div class="resource-card {{if .PendingApproval}}pending{{else if .UpdateAvailable}}update-available{{else}}up-to-date{{end}}" 
+                 data-status="{{if .PendingApproval}}pending{{else if .UpdateAvailable}}available{{else}}uptodate{{end}}"
+                 data-namespace="{{.Namespace}}"
+                 data-kind="{{.Kind}}">
+                <div class="resource-header">
+                    <div class="resource-title">
+                        <span class="resource-icon">{{if eq .Kind "Deployment"}}▣{{else if eq .Kind "StatefulSet"}}≡{{else}}⚙{{end}}</span>
+                        <h2>{{.Name}}</h2>
+                        <span class="resource-kind-badge">{{.Kind}}</span>
+                    </div>
+                    <div class="resource-meta">
+                        <span class="badge namespace">{{.Namespace}}</span>
+                        <span class="badge schedule">{{.Schedule}}</span>
+                    </div>
+                </div>
+
+                <div class="containers">
+                    {{range $containerName, $imageID := .Containers}}
+                    <div class="container-info">
+                        <span class="container-icon">◆</span>
+                        <span class="container-name">{{$containerName}}</span>
+                    </div>
+                    {{end}}
+                </div>
+
+                <div class="resource-footer">
+                    <div class="status-info">
+                        {{if .PendingApproval}}
+                        <span class="status-badge pending">⏳ Pending Approval</span>
+                        {{else if .UpdateAvailable}}
+                        <span class="status-badge available">🔄 Update Available</span>
+                        {{else}}
+                        <span class="status-badge uptodate">✅ Up to Date</span>
+                        {{end}}
+                        
+                        {{if .RequiresApproval}}
+                        <span class="approval-badge">🔒 Requires Approval</span>
+                        {{else}}
+                        <span class="approval-badge auto">🔓 Auto-Update</span>
+                        {{end}}
+                    </div>
+
+                    {{if .PendingApproval}}
+                    <button class="approve-btn" 
+                            hx-post="/api/resources/approve"
+                            hx-vals='{"namespace": "{{.Namespace}}", "kind": "{{.Kind}}", "name": "{{.Name}}"}'
+                            hx-swap="outerHTML"
+                            hx-target="closest .resource-card">
+                        🚀 Approve & Update
+                    </button>
+                    {{end}}
+                </div>
+
+                {{if .LastChecked}}
+                <div class="last-checked">
+                    Last checked: {{.LastChecked.Format "2006-01-02 15:04:05"}}
+                </div>
+                {{end}}
+            </div>
+            {{else}}
+            <div class="empty-state">
+                <p>🔍 No resources being watched yet.</p>
+                <p>Add <code>buoy.sh/watch: "true"</code> annotation to your Deployments, StatefulSets, or DaemonSets.</p>
+            </div>
+            {{end}}
+        </div>
+    </div>
+
+    <script>
+        // Populate namespace filter on page load
+        function populateNamespaceFilter() {
+            const namespaces = new Set();
+            document.querySelectorAll('.resource-card').forEach(card => {
+                namespaces.add(card.getAttribute('data-namespace'));
+            });
+            
+            const select = document.getElementById('namespaceFilter');
+            const currentValue = select.value;
+            
+            // Keep "All Namespaces" option
+            select.innerHTML = '<option value="all">All Namespaces</option>';
+            
+            // Add namespace options sorted alphabetically
+            Array.from(namespaces).sort().forEach(ns => {
+                const option = document.createElement('option');
+                option.value = ns;
+                option.textContent = ns;
+                select.appendChild(option);
+            });
+            
+            // Restore previous selection if it still exists
+            if (currentValue !== 'all' && namespaces.has(currentValue)) {
+                select.value = currentValue;
+            }
+        }
+
+        function filterResources() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const namespaceFilter = document.getElementById('namespaceFilter').value;
+            const kindFilter = document.getElementById('kindFilter').value;
+            const cards = document.querySelectorAll('.resource-card');
+            
+            cards.forEach(card => {
+                const status = card.getAttribute('data-status');
+                const namespace = card.getAttribute('data-namespace');
+                const kind = card.getAttribute('data-kind');
+                
+                const statusMatch = statusFilter === 'all' || status === statusFilter;
+                const namespaceMatch = namespaceFilter === 'all' || namespace === namespaceFilter;
+                const kindMatch = kindFilter === 'all' || kind === kindFilter;
+                
+                if (statusMatch && namespaceMatch && kindMatch) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        }
+
+        // Auto-refresh resources every 30 seconds
+        async function refreshResources() {
+            try {
+                const response = await fetch('/api/resources');
+                const resources = await response.json();
+                
+                const container = document.getElementById('resourceList');
+                const currentFilters = {
+                    status: document.getElementById('statusFilter').value,
+                    namespace: document.getElementById('namespaceFilter').value,
+                    kind: document.getElementById('kindFilter').value
+                };
+                
+                // Re-render resources (simplified - in production you'd want a template engine)
+                container.innerHTML = resources.map(res => renderResource(res)).join('');
+                
+                // Restore filters
+                document.getElementById('statusFilter').value = currentFilters.status;
+                document.getElementById('kindFilter').value = currentFilters.kind;
+                
+                populateNamespaceFilter();
+                document.getElementById('namespaceFilter').value = currentFilters.namespace;
+                filterResources();
+            } catch (error) {
+                console.error('Failed to refresh resources:', error);
+            }
+        }
+
+        function renderResource(res) {
+            const statusClass = res.PendingApproval ? 'pending' : (res.UpdateAvailable ? 'update-available' : 'up-to-date');
+            const statusData = res.PendingApproval ? 'pending' : (res.UpdateAvailable ? 'available' : 'uptodate');
+            const icon = res.Kind === 'Deployment' ? '▣' : (res.Kind === 'StatefulSet' ? '≡' : '⚙');
+            
+            const containers = Object.keys(res.Containers || {}).map(name => 
+                `<div class="container-info"><span class="container-icon">◆</span><span class="container-name">${name}</span></div>`
+            ).join('');
+            
+            const statusBadge = res.PendingApproval ? 
+                '<span class="status-badge pending">⏳ Pending Approval</span>' :
+                (res.UpdateAvailable ? 
+                    '<span class="status-badge available">🔄 Update Available</span>' :
+                    '<span class="status-badge uptodate">✅ Up to Date</span>');
+            
+            const approvalBadge = res.RequiresApproval ?
+                '<span class="approval-badge">🔒 Requires Approval</span>' :
+                '<span class="approval-badge auto">🔓 Auto-Update</span>';
+            
+            const approveButton = res.PendingApproval ?
+                `<button class="approve-btn" onclick="approveUpdate('${res.Namespace}', '${res.Kind}', '${res.Name}')">🚀 Approve & Update</button>` : '';
+            
+            const lastChecked = res.LastChecked ? 
+                `<div class="last-checked">Last checked: ${new Date(res.LastChecked).toLocaleString()}</div>` : '';
+            
+            return `
+                <div class="resource-card ${statusClass}" data-status="${statusData}" data-namespace="${res.Namespace}" data-kind="${res.Kind}">
+                    <div class="resource-header">
+                        <div class="resource-title">
+                            <span class="resource-icon">${icon}</span>
+                            <h2>${res.Name}</h2>
+                            <span class="resource-kind-badge">${res.Kind}</span>
+                        </div>
+                        <div class="resource-meta">
+                            <span class="badge namespace">${res.Namespace}</span>
+                            <span class="badge schedule">${res.Schedule}</span>
+                        </div>
+                    </div>
+                    <div class="containers">${containers}</div>
+                    <div class="resource-footer">
+                        <div class="status-info">
+                            ${statusBadge}
+                            ${approvalBadge}
+                        </div>
+                        ${approveButton}
+                    </div>
+                    ${lastChecked}
+                </div>
+            `;
+        }
+
+        async function approveUpdate(namespace, kind, name) {
+            try {
+                const response = await fetch('/api/resources/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ namespace, kind, name })
+                });
+                
+                if (response.ok) {
+                    await refreshResources();
+                } else {
+                    alert('Failed to approve update');
+                }
+            } catch (error) {
+                console.error('Failed to approve update:', error);
+                alert('Failed to approve update');
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            populateNamespaceFilter();
+            filterResources();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(refreshResources, 30000);
+        });
+    </script>
+</body>
+</html>

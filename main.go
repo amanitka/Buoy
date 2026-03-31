@@ -20,6 +20,22 @@ func main() {
 	}
 	slog.Info("⚓ Buoy is now watching the cluster for changes")
 
+	updater := NewUpdater(client.clientset)
+	scheduler := NewScheduler(client, client.registry, updater)
+	scheduler.Start(ctx)
+
+	server, err := NewServer(client.registry, updater)
+	if err != nil {
+		slog.Error("❌ Failed to create HTTP server", "error", err)
+		os.Exit(1)
+	}
+
+	go func() {
+		if err := server.Start(ctx, ":8080"); err != nil {
+			slog.Error("❌ HTTP server error", "error", err)
+		}
+	}()
+
 	<-ctx.Done()
 	slog.Info("🛑 Buoy is shutting down gracefully")
 }

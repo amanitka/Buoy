@@ -1,0 +1,54 @@
+# Example: Deployment with Buoy annotations
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  namespace: default
+  annotations:
+    # Enable Buoy monitoring
+    buoy.sh/watch: "true"
+    # Check for updates hourly (options: @hourly, @daily)
+    buoy.sh/watchSchedule: "@hourly"
+    # Require manual approval for updates (options: required, auto)
+    buoy.sh/updateApproval: "required"
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: web
+        image: nginx:1.25
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+---
+# Example: Auto-updating Deployment (no approval required)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auto-update-app
+  namespace: default
+  annotations:
+    buoy.sh/watch: "true"
+    buoy.sh/watchSchedule: "@daily"
+    buoy.sh/updateApproval: "auto"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auto-update-app
+  template:
+    metadata:
+      labels:
+        app: auto-update-app
+    spec:
+      containers:
+      - name: app
+        image: redis:7-alpine
+        imagePullPolicy: Always

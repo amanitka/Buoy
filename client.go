@@ -205,12 +205,37 @@ func (c *Client) handleDaemonSetDelete(obj interface{}) {
 
 func (c *Client) registerResource(namespace, name, kind string, annotations map[string]string) {
 	res := &ObservedResource{
-		Namespace:   namespace,
-		Name:        name,
-		Kind:        kind,
-		Annotations: extractBuoyAnnotations(annotations),
-		Containers:  make(map[string]string),
+		Namespace:        namespace,
+		Name:             name,
+		Kind:             kind,
+		Annotations:      extractBuoyAnnotations(annotations),
+		Containers:       make(map[string]string),
+		Schedule:         getSchedule(annotations),
+		RequiresApproval: requiresApproval(annotations),
+		RemoteSHA:        make(map[string]string),
+		LiveSHA:          make(map[string]string),
 	}
 	c.registry.Set(res)
-	slog.Info("⚓ Watching resource", "name", name, "namespace", namespace, "kind", kind, "annotations", annotations, "containers", res.Containers)
+	slog.Info("⚓ Watching resource",
+		"name", name,
+		"namespace", namespace,
+		"kind", kind,
+		"schedule", res.Schedule,
+		"requires_approval", res.RequiresApproval,
+	)
+}
+
+func getSchedule(annotations map[string]string) string {
+	if schedule, ok := annotations["buoy.sh/watchSchedule"]; ok {
+		return schedule
+	}
+	return "@hourly"
+}
+
+func requiresApproval(annotations map[string]string) bool {
+	approval, ok := annotations["buoy.sh/updateApproval"]
+	if !ok {
+		return false
+	}
+	return approval == "required" || approval == "true"
 }

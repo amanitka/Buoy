@@ -55,11 +55,15 @@ func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID
 	if res.Containers == nil {
 		res.Containers = make(map[string]string)
 	}
+	if res.LiveSHA == nil {
+		res.LiveSHA = make(map[string]string)
+	}
 	oldID, hadOld := res.Containers[containerName]
 	if hadOld && oldID == imageID {
 		return false
 	}
 	res.Containers[containerName] = imageID
+	res.LiveSHA[containerName] = extractSHAFromImageID(imageID)
 	r.logContainerChange(namespace, name, kind, containerName, imageID, oldID, hadOld)
 	return true
 }
@@ -83,6 +87,80 @@ func (r *Registry) logContainerChange(namespace, name, kind, containerName, imag
 		"container", containerName,
 		"sha", imageID,
 	)
+}
+
+func (r *Registry) MarkUpdateAvailable(namespace, name, kind, containerName, remoteSHA string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := r.getKey(namespace, name, kind)
+	res, exists := r.resources[key]
+	if !exists {
+		return
+	}
+	if res.RemoteSHA == nil {
+		res.RemoteSHA = make(map[string]string)
+	}
+	res.RemoteSHA[containerName] = remoteSHA
+	res.UpdateAvailable = true
+	if res.RequiresApproval {
+		res.PendingApproval = true
+	}
+}
+
+func (r *Registry) ApproveUpdate(namespace, name, kind string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := r.getKey(namespace, name, kind)
+	res, exists := r.resources[key]
+	if !exists {
+		return fmt.Errorf("resource not found")
+	}
+	if !res.RequiresApproval {
+		return fmt.Errorf("resource does not require approval")
+	}
+	res.PendingApproval = false
+	return nil
+}
+
+func (r *Registry) GetAllResources() []*ObservedResource {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	resources := make([]*ObservedResource, 0, len(r.resources))
+	for _, res := range r.resources {
+		resources = append(resources, res)
+	}
+	return resources
+}
+
+func extractSHAFromImageID(imageID string) string {
+	if len(imageID) == 0 {
+		return ""
+	}
+	if atIdx := findChar(imageID, '@'); atIdx >= 0 {
+		return imageID[atIdx+1:]
+	}
+	if shaIdx := findSubstring(imageID, "sha256:"); shaIdx >= 0 {
+		return imageID[shaIdx:]
+	}
+	return ""
+}
+
+func findChar(s string, c rune) int {
+	for i, ch := range s {
+		if ch == c {
+			return i
+		}
+	}
+	return -1
+}
+
+func findSubstring(s, substr string) int {
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if s[i:i+len(substr)] == substr {
+			return i
+		}
+	}
+	return -1
 }
 
 func GetRemoteDigest(imageName string) (string, error) {
