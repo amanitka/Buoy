@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-//go:embed web/templates/*.html web/static/*.css
+//go:embed web/templates/*.html web/static/*.css web/static/*.svg
 var webFiles embed.FS
 
 type Server struct {
@@ -124,6 +124,7 @@ func (s *Server) approveAndUpdate(namespace, name, kind string) error {
 	if err := s.updater.TriggerRollingUpdate(res); err != nil {
 		return err
 	}
+	s.registry.MarkUpdating(namespace, name, kind)
 	slog.Info("✅ Update approved and triggered",
 		"namespace", namespace,
 		"kind", kind,

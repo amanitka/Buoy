@@ -23,6 +23,7 @@ type Client struct {
 	clientset       *kubernetes.Clientset
 	informerFactory informers.SharedInformerFactory
 	registry        *Registry
+	config          *Config
 }
 
 func extractBuoyAnnotations(annotations map[string]string) map[string]string {
@@ -48,12 +49,12 @@ func buildKubeConfig() (*rest.Config, error) {
 	return config, nil
 }
 
-func NewClient() (*Client, error) {
-	config, err := buildKubeConfig()
+func NewClient(config *Config) (*Client, error) {
+	kubeConfig, err := buildKubeConfig()
 	if err != nil {
 		return nil, err
 	}
-	clientset, err := kubernetes.NewForConfig(config)
+	clientset, err := kubernetes.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create clientset: %w", err)
 	}
@@ -62,6 +63,7 @@ func NewClient() (*Client, error) {
 		clientset:       clientset,
 		informerFactory: informerFactory,
 		registry:        NewRegistry(),
+		config:          config,
 	}, nil
 }
 
@@ -124,13 +126,16 @@ func (c *Client) handlePodUpdate(oldObj, newObj interface{}) {
 }
 
 func (c *Client) syncPod(pod *corev1.Pod) {
+	if pod.DeletionTimestamp != nil {
+		return // Ignore terminating pods to prevent SHA flip-flopping
+	}
 	parentNS, parentName, parentKind := c.getGrandparent(pod)
 	if parentName == "" || !c.isWatched(parentNS, parentName, parentKind) {
 		return
 	}
 	for _, status := range pod.Status.ContainerStatuses {
 		if status.ImageID != "" {
-			c.registry.UpdateContainer(parentNS, parentName, parentKind, status.Name, status.ImageID)
+			c.registry.UpdateContainer(parentNS, parentName, parentKind, status.Name, status.ImageID, pod.CreationTimestamp.Time)
 		}
 	}
 }
@@ -210,10 +215,11 @@ func (c *Client) registerResource(namespace, name, kind string, annotations map[
 		Kind:             kind,
 		Annotations:      extractBuoyAnnotations(annotations),
 		Containers:       make(map[string]string),
-		Schedule:         getSchedule(annotations),
+		Schedule:         c.getSchedule(annotations),
 		RequiresApproval: requiresApproval(annotations),
 		RemoteSHA:        make(map[string]string),
 		LiveSHA:          make(map[string]string),
+		Status:           "UpToDate",
 	}
 	c.registry.Set(res)
 	slog.Info("⚓ Watching resource",
@@ -225,11 +231,11 @@ func (c *Client) registerResource(namespace, name, kind string, annotations map[
 	)
 }
 
-func getSchedule(annotations map[string]string) string {
+func (c *Client) getSchedule(annotations map[string]string) string {
 	if schedule, ok := annotations["buoy.sh/watchSchedule"]; ok {
 		return schedule
 	}
-	return "@hourly"
+	return c.config.DefaultPollInterval
 }
 
 func requiresApproval(annotations map[string]string) bool {

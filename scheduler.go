@@ -35,29 +35,34 @@ func (s *Scheduler) runInitialCheck() {
 }
 
 func (s *Scheduler) startPeriodicChecks(ctx context.Context) {
-	hourlyTicker := time.NewTicker(1 * time.Hour)
-	dailyTicker := time.NewTicker(24 * time.Hour)
-	defer hourlyTicker.Stop()
-	defer dailyTicker.Stop()
+	go s.runScheduleLoop(ctx, "@hourly", func(now time.Time) time.Time {
+		return time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+1, 0, 0, 0, now.Location())
+	})
+	go s.runScheduleLoop(ctx, "@daily", func(now time.Time) time.Time {
+		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+	})
+}
 
-	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-hourlyTicker.C:
-				s.checkResourcesBySchedule("@hourly")
-			case <-dailyTicker.C:
-				s.checkResourcesBySchedule("@daily")
-			}
+func (s *Scheduler) runScheduleLoop(ctx context.Context, schedule string, nextTimeFunc func(time.Time) time.Time) {
+	for {
+		now := time.Now()
+		next := nextTimeFunc(now)
+		timer := time.NewTimer(next.Sub(now))
+
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+			s.checkResourcesBySchedule(schedule)
 		}
-	}()
+	}
 }
 
 func (s *Scheduler) checkResourcesBySchedule(schedule string) {
-	s.registry.mu.RLock()
-	defer s.registry.mu.RUnlock()
-	for _, res := range s.registry.resources {
+	slog.Info("⏳ Running scheduled SHA comparison check", "schedule", schedule)
+	resources := s.registry.GetAllResources()
+	for _, res := range resources {
 		if res.Schedule == schedule {
 			s.checkResource(res)
 		}
@@ -65,9 +70,8 @@ func (s *Scheduler) checkResourcesBySchedule(schedule string) {
 }
 
 func (s *Scheduler) checkAllResources() {
-	s.registry.mu.RLock()
-	defer s.registry.mu.RUnlock()
-	for _, res := range s.registry.resources {
+	resources := s.registry.GetAllResources()
+	for _, res := range resources {
 		s.checkResource(res)
 	}
 }
@@ -96,6 +100,12 @@ func (s *Scheduler) checkPodForResource(pod *corev1.Pod, res *ObservedResource) 
 }
 
 func (s *Scheduler) compareImageSHA(res *ObservedResource, containerName, image, liveImageID string) {
+	slog.Info("🔍 Comparing image SHA",
+		"resource", res.Name,
+		"namespace", res.Namespace,
+		"container", containerName,
+		"image", image,
+	)
 	remoteSHA, err := GetRemoteDigest(image)
 	if err != nil {
 		slog.Debug("Failed to fetch remote digest", "image", image, "error", err)
@@ -142,6 +152,7 @@ func (s *Scheduler) triggerAutoUpdate(res *ObservedResource) {
 		slog.Error("Auto-update failed", "resource", res.Name, "error", err)
 		return
 	}
+	s.registry.MarkUpdating(res.Namespace, res.Name, res.Kind)
 	slog.Info("🚀 Auto-update triggered",
 		"resource", res.Name,
 		"namespace", res.Namespace,

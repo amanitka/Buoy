@@ -10,7 +10,7 @@
 <body>
     <div class="container">
         <header class="header">
-            <div class="header-logo">⚓</div>
+            <img src="/static/buoy-icon.svg" alt="Buoy" class="header-logo">
             <div class="header-content">
                 <h1>Buoy - Image Update Dashboard</h1>
                 <p class="subtitle">Real-time Kubernetes Image Monitoring</p>
@@ -28,9 +28,10 @@
                 <label>Status:</label>
                 <select id="statusFilter" onchange="filterResources()">
                     <option value="all">All</option>
-                    <option value="pending">Pending Approval</option>
-                    <option value="available">Update Available</option>
-                    <option value="uptodate">Up to Date</option>
+                    <option value="PendingApproval">Pending Approval</option>
+                    <option value="UpdateAvailable">Update Available</option>
+                    <option value="Updating">Updating</option>
+                    <option value="UpToDate">Up to Date</option>
                 </select>
             </div>
             <div class="filter-group">
@@ -44,10 +45,18 @@
             </div>
         </div>
 
+        <div class="resources-table-head">
+            <span>Workload</span>
+            <span>Containers</span>
+            <span>Status</span>
+            <span>Action</span>
+            <span>Last Checked</span>
+        </div>
+
         <div class="resources" id="resourceList">
             {{range .}}
-            <div class="resource-card {{if .PendingApproval}}pending{{else if .UpdateAvailable}}update-available{{else}}up-to-date{{end}}" 
-                 data-status="{{if .PendingApproval}}pending{{else if .UpdateAvailable}}available{{else}}uptodate{{end}}"
+            <div class="resource-card {{if eq .Status "PendingApproval"}}pending{{else if eq .Status "UpdateAvailable"}}update-available{{else if eq .Status "Updating"}}updating{{else}}up-to-date{{end}}" 
+                 data-status="{{.Status}}"
                  data-namespace="{{.Namespace}}"
                  data-kind="{{.Kind}}">
                 <div class="resource-header">
@@ -63,7 +72,7 @@
                 </div>
 
                 <div class="containers">
-                    {{range $containerName, $imageID := .Containers}}
+                    {{range $containerName := .SortedContainerNames}}
                     <div class="container-info">
                         <span class="container-icon">◆</span>
                         <span class="container-name">{{$containerName}}</span>
@@ -73,10 +82,12 @@
 
                 <div class="resource-footer">
                     <div class="status-info">
-                        {{if .PendingApproval}}
+                        {{if eq .Status "PendingApproval"}}
                         <span class="status-badge pending">⏳ Pending Approval</span>
-                        {{else if .UpdateAvailable}}
+                        {{else if eq .Status "UpdateAvailable"}}
                         <span class="status-badge available">🔄 Update Available</span>
+                        {{else if eq .Status "Updating"}}
+                        <span class="status-badge updating">⏳ Updating...</span>
                         {{else}}
                         <span class="status-badge uptodate">✅ Up to Date</span>
                         {{end}}
@@ -88,7 +99,7 @@
                         {{end}}
                     </div>
 
-                    {{if .PendingApproval}}
+                    {{if eq .Status "PendingApproval"}}
                     <button class="approve-btn" 
                             hx-post="/api/resources/approve"
                             hx-vals='{"namespace": "{{.Namespace}}", "kind": "{{.Kind}}", "name": "{{.Name}}"}'
@@ -96,6 +107,8 @@
                             hx-target="closest .resource-card">
                         🚀 Approve & Update
                     </button>
+                    {{else}}
+                    <span class="action-placeholder">—</span>
                     {{end}}
                 </div>
 
@@ -158,7 +171,7 @@
                 const kindMatch = kindFilter === 'all' || kind === kindFilter;
                 
                 if (statusMatch && namespaceMatch && kindMatch) {
-                    card.style.display = 'block';
+                    card.style.display = '';
                 } else {
                     card.style.display = 'none';
                 }
@@ -178,8 +191,17 @@
                     kind: document.getElementById('kindFilter').value
                 };
                 
-                // Re-render resources (simplified - in production you'd want a template engine)
-                container.innerHTML = resources.map(res => renderResource(res)).join('');
+                const orderedResources = resources.sort((a, b) => {
+                    const namespaceCompare = (a.Namespace || '').localeCompare(b.Namespace || '');
+                    if (namespaceCompare !== 0) return namespaceCompare;
+
+                    const kindCompare = (a.Kind || '').localeCompare(b.Kind || '');
+                    if (kindCompare !== 0) return kindCompare;
+
+                    return (a.Name || '').localeCompare(b.Name || '');
+                });
+
+                container.innerHTML = orderedResources.map(res => renderResource(res)).join('');
                 
                 // Restore filters
                 document.getElementById('statusFilter').value = currentFilters.status;
@@ -194,26 +216,33 @@
         }
 
         function renderResource(res) {
-            const statusClass = res.PendingApproval ? 'pending' : (res.UpdateAvailable ? 'update-available' : 'up-to-date');
-            const statusData = res.PendingApproval ? 'pending' : (res.UpdateAvailable ? 'available' : 'uptodate');
+            const statusClass = res.Status === 'PendingApproval' ? 'pending' : 
+                               (res.Status === 'UpdateAvailable' ? 'update-available' : 
+                               (res.Status === 'Updating' ? 'updating' : 'up-to-date'));
+            const statusData = res.Status;
             const icon = res.Kind === 'Deployment' ? '▣' : (res.Kind === 'StatefulSet' ? '≡' : '⚙');
             
-            const containers = Object.keys(res.Containers || {}).map(name => 
+            const containers = Object.keys(res.Containers || {}).sort((a, b) => a.localeCompare(b)).map(name => 
                 `<div class="container-info"><span class="container-icon">◆</span><span class="container-name">${name}</span></div>`
             ).join('');
             
-            const statusBadge = res.PendingApproval ? 
-                '<span class="status-badge pending">⏳ Pending Approval</span>' :
-                (res.UpdateAvailable ? 
-                    '<span class="status-badge available">🔄 Update Available</span>' :
-                    '<span class="status-badge uptodate">✅ Up to Date</span>');
+            let statusBadge = '';
+            if (res.Status === 'PendingApproval') {
+                statusBadge = '<span class="status-badge pending">⏳ Pending Approval</span>';
+            } else if (res.Status === 'UpdateAvailable') {
+                statusBadge = '<span class="status-badge available">🔄 Update Available</span>';
+            } else if (res.Status === 'Updating') {
+                statusBadge = '<span class="status-badge updating">⏳ Updating...</span>';
+            } else {
+                statusBadge = '<span class="status-badge uptodate">✅ Up to Date</span>';
+            }
             
             const approvalBadge = res.RequiresApproval ?
                 '<span class="approval-badge">🔒 Requires Approval</span>' :
                 '<span class="approval-badge auto">🔓 Auto-Update</span>';
             
-            const approveButton = res.PendingApproval ?
-                `<button class="approve-btn" onclick="approveUpdate('${res.Namespace}', '${res.Kind}', '${res.Name}')">🚀 Approve & Update</button>` : '';
+            const approveButton = res.Status === 'PendingApproval' ?
+                `<button class="approve-btn" onclick="approveUpdate('${res.Namespace}', '${res.Kind}', '${res.Name}')">🚀 Approve & Update</button>` : '<span class="action-placeholder">—</span>';
             
             const lastChecked = res.LastChecked ? 
                 `<div class="last-checked">Last checked: ${new Date(res.LastChecked).toLocaleString()}</div>` : '';

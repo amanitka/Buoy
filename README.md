@@ -1,52 +1,37 @@
-# ⚓ Buoy
+# Buoy
 
-**Buoy** is a lightweight Kubernetes controller that monitors container image digests and triggers rolling updates as soon as a new version is available in your registry.
+Buoy is a Kubernetes controller and web dashboard designed to manage, schedule, and trigger rolling updates for your cluster workloads. It provides a centralized command center to safely restart Deployments, StatefulSets, and DaemonSets.
 
-If your cluster relies on mutable tags (like `:latest`) or frequently updated staging images, Buoy ensures your workloads stay synchronized with your registry—without requiring manual redeploys or CI/CD overhead.
+## Features
 
----
+- **Cluster Watching**: Monitors your Kubernetes cluster for changes to `Deployments`, `StatefulSets`, and `DaemonSets`.
+- **Web Dashboard**: Built-in web interface (port `8080`) to view and manage observed resources.
+- **Manual Approvals**: Approve and trigger rolling updates directly through the dashboard or REST API.
+- **Graceful Rollouts**: Triggers standard Kubernetes rolling updates by patching the workload with a `restartedAt` annotation (identical to `kubectl rollout restart`).
+- **Automated Scheduling**: Built-in scheduler for managing automated or delayed rollouts.
 
-## 🚀 Why Buoy?
+## How It Works
 
-Standard Kubernetes behavior won't automatically redeploy a workload when the image behind a tag changes, even with `imagePullPolicy: Always`. This creates a "stale state" where your registry and cluster are out of sync.
+1. **Informers**: Connects to the Kubernetes API and sets up informers to watch for workload events.
+2. **Registry**: Maintains an internal state registry of all observed resources.
+3. **HTTP Server**: Serves an embedded frontend dashboard and exposes an API (`/api/resources/approve`) to handle user approvals.
+4. **Updater**: Dispatches Kubernetes strategic merge patches to the respective workload controller, instructing it to gracefully rotate pods.
 
-Buoy closes that gap by:
-* 🔍 **Monitoring** image digests directly from your container registries.
-* 🔄 **Detecting** when a tag (e.g., `:stable`) points to a new underlying SHA.
-* 🚀 **Triggering** an automated, native rollout for your Deployments and StatefulSets.
+## Quick Start
 
----
+### Prerequisites
+- Go 1.21+
+- Access to a Kubernetes cluster (`~/.kube/config` or in-cluster SA)
 
-## ⚙️ How It Works
+### Running Locally
+```bash
+go run .
+```
+The web dashboard will be available at `http://localhost:8080`.
 
-Buoy operates as a sidecar or standalone controller within your cluster:
+## API Endpoints
 
-1.  **Discovery:** It watches Kubernetes resources (Deployments, StatefulSets) tagged with the Buoy annotation.
-2.  **Resolution:** It extracts the image reference (e.g., `my-app:latest`) and resolves its current digest from the registry.
-3.  **Comparison:** It compares the registry digest against the last seen digest stored in the resource metadata.
-4.  **Action:** If a change is detected, Buoy patches the pod template (typically via a timestamp annotation), prompting Kubernetes to execute a standard rolling update.
-
----
-
-## 🧩 Quick Start
-
-To enable Buoy for a workload, simply add the `buoy.sh/watch` annotation to your manifest.
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: my-app
-  annotations:
-    buoy.sh/watch: "true" # ⚓ Buoy starts watching this resource
-spec:
-  replicas: 3
-  template:
-    metadata:
-      annotations:
-        # Buoy will update a timestamp here to trigger the rollout
-    spec:
-      containers:
-        - name: app
-          image: my-repo/my-app:latest
-          imagePullPolicy: Always
+- `GET /`: The main web dashboard.
+- `GET /api/resources`: Returns a JSON list of all observed resources.
+- `POST /api/resources/approve`: Approves and triggers a rolling update. Expects a JSON payload with `namespace`, `kind`, and `name`.
+- `GET /health`: Health check endpoint.

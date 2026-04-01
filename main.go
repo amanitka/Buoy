@@ -9,8 +9,9 @@ import (
 )
 
 func main() {
+	config := LoadConfig()
 	setupLogger()
-	client := initializeClient()
+	client := initializeClient(config)
 	ctx := setupContext()
 
 	slog.Info("🚢 Buoy is leaving the dock: Starting informers...")
@@ -41,12 +42,21 @@ func main() {
 }
 
 func setupLogger() {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	var level slog.Level
+	if os.Getenv("DEBUG") == "true" {
+		level = slog.LevelDebug
+	} else {
+		level = slog.LevelInfo
+	}
+	opts := &slog.HandlerOptions{
+		Level: level,
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, opts))
 	slog.SetDefault(logger)
 }
 
-func initializeClient() *Client {
-	client, err := NewClient()
+func initializeClient(config *Config) *Client {
+	client, err := NewClient(config)
 	if err != nil {
 		slog.Error("❌ Fatal Error: Could not drop anchor", "error", err)
 		os.Exit(1)

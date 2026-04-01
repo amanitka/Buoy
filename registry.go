@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
+	"time"
 
 	"github.com/google/go-containerregistry/pkg/name"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
@@ -44,7 +47,7 @@ func (r *Registry) Delete(namespace, name, kind string) {
 	delete(r.resources, r.getKey(namespace, name, kind))
 }
 
-func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID string) bool {
+func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID string, creationTime time.Time) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	key := r.getKey(namespace, name, kind)
@@ -52,6 +55,15 @@ func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID
 	if !exists {
 		return false
 	}
+
+	// Ignore older pods during a rollout to prevent flip-flopping
+	if !res.LatestPodCreation.IsZero() && creationTime.Before(res.LatestPodCreation) {
+		return false
+	}
+	if creationTime.After(res.LatestPodCreation) {
+		res.LatestPodCreation = creationTime
+	}
+
 	if res.Containers == nil {
 		res.Containers = make(map[string]string)
 	}
@@ -63,7 +75,21 @@ func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID
 		return false
 	}
 	res.Containers[containerName] = imageID
-	res.LiveSHA[containerName] = extractSHAFromImageID(imageID)
+
+	newLiveSHA := extractSHAFromImageID(imageID)
+	res.LiveSHA[containerName] = newLiveSHA
+
+	// If we are updating, check if the new pod brings us to the desired state
+	if res.Status == "Updating" {
+		if expectedRemoteSHA, ok := res.RemoteSHA[containerName]; ok {
+			if newLiveSHA == expectedRemoteSHA {
+				res.Status = "UpToDate"
+				res.UpdateAvailable = false
+				res.PendingApproval = false
+			}
+		}
+	}
+
 	r.logContainerChange(namespace, name, kind, containerName, imageID, oldID, hadOld)
 	return true
 }
@@ -97,6 +123,9 @@ func (r *Registry) MarkUpdateAvailable(namespace, name, kind, containerName, rem
 	if !exists {
 		return
 	}
+	if res.Status == "Updating" {
+		return // Do not transition back if we are currently updating
+	}
 	if res.RemoteSHA == nil {
 		res.RemoteSHA = make(map[string]string)
 	}
@@ -104,6 +133,20 @@ func (r *Registry) MarkUpdateAvailable(namespace, name, kind, containerName, rem
 	res.UpdateAvailable = true
 	if res.RequiresApproval {
 		res.PendingApproval = true
+		res.Status = "PendingApproval"
+	} else {
+		res.Status = "UpdateAvailable"
+	}
+}
+
+func (r *Registry) MarkUpdating(namespace, name, kind string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	key := r.getKey(namespace, name, kind)
+	if res, exists := r.resources[key]; exists {
+		res.Status = "Updating"
+		res.UpdateAvailable = false
+		res.PendingApproval = false
 	}
 }
 
@@ -129,6 +172,15 @@ func (r *Registry) GetAllResources() []*ObservedResource {
 	for _, res := range r.resources {
 		resources = append(resources, res)
 	}
+	sort.Slice(resources, func(i, j int) bool {
+		if resources[i].Namespace != resources[j].Namespace {
+			return resources[i].Namespace < resources[j].Namespace
+		}
+		if resources[i].Kind != resources[j].Kind {
+			return resources[i].Kind < resources[j].Kind
+		}
+		return resources[i].Name < resources[j].Name
+	})
 	return resources
 }
 
@@ -164,15 +216,25 @@ func findSubstring(s, substr string) int {
 }
 
 func GetRemoteDigest(imageName string) (string, error) {
+	slog.Debug("Fetching remote digest", "image", imageName)
 	imageRef, err := name.ParseReference(imageName)
 	if err != nil {
+		slog.Debug("Failed to parse reference", "image", imageName, "error", err)
 		return "", err
 	}
+
+	// Create context with timeout to prevent blocking
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	// remote.Head only fetches the headers (very fast/lightweight)
 	// It automatically handles anonymous auth for public images
-	image, err := remote.Head(imageRef)
+	slog.Debug("Calling remote.Head", "imageRef", imageRef.String())
+	image, err := remote.Head(imageRef, remote.WithContext(ctx))
 	if err != nil {
+		slog.Debug("remote.Head failed", "imageRef", imageRef.String(), "error", err)
 		return "", err
 	}
+	slog.Debug("Successfully fetched remote digest", "image", imageName, "digest", image.Digest.String())
 	return image.Digest.String(), nil
 }
