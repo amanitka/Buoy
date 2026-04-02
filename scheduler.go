@@ -47,6 +47,10 @@ func (s *Scheduler) startPeriodicChecks(ctx context.Context) {
 	go s.runScheduleLoop(ctx, "@daily", func(now time.Time) time.Time {
 		return time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 	})
+	go s.runScheduleLoop(ctx, "@weekly", func(now time.Time) time.Time {
+		daysUntilEndOfWeek := 7 - int(now.Weekday())
+		return time.Date(now.Year(), now.Month(), now.Day()+daysUntilEndOfWeek, 0, 0, 0, 0, now.Location())
+	})
 }
 
 func (s *Scheduler) runScheduleLoop(ctx context.Context, schedule string, nextTimeFunc func(time.Time) time.Time) {
