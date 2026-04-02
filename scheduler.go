@@ -25,11 +25,17 @@ func NewScheduler(client *Client, registry *Registry, updater *Updater) *Schedul
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
-	s.runInitialCheck()
+	go s.runInitialCheck(ctx)
 	s.startPeriodicChecks(ctx)
 }
 
-func (s *Scheduler) runInitialCheck() {
+func (s *Scheduler) runInitialCheck(ctx context.Context) {
+	select {
+	case <-ctx.Done():
+		return
+	default:
+	}
+
 	slog.Info("🔍 Running initial SHA comparison check...")
 	s.checkAllResources()
 }
