@@ -5,34 +5,34 @@
 }
 
 :root {
-    --bg-primary: #1c2535;
-    --bg-secondary: #263248;
-    --bg-tertiary: #2f3d57;
-    --text-primary: #e5ecf7;
-    --text-secondary: #b7c4da;
-    --text-muted: #91a2be;
-    --border: #3d4e6e;
+    --bg-primary: #202124;
+    --bg-secondary: #2a2a2a;
+    --bg-tertiary: #343434;
+    --text-primary: #f1f3f4;
+    --text-secondary: #c2c7cf;
+    --text-muted: #9aa0a6;
+    --border: #4a4d52;
 
     --accent-blue: #326ce5;
     --accent-blue-hover: #2558c6;
-    --accent-blue-light: #324a77;
+    --accent-blue-light: rgba(50, 108, 229, 0.18);
     
     --accent-green: #2da44e; /* Success */
-    --accent-green-light: #223f35;
+    --accent-green-light: rgba(45, 164, 78, 0.16);
     
     --accent-yellow: #bf8700; /* Warning */
-    --accent-yellow-light: #4d4022;
+    --accent-yellow-light: rgba(191, 135, 0, 0.16);
     
     --accent-red: #cf222e; /* Danger */
-    --accent-red-light: #4a2b32;
+    --accent-red-light: rgba(207, 34, 46, 0.16);
 
-    --shadow-sm: 0 1px 2px rgba(8, 12, 20, 0.55), 0 2px 8px rgba(8, 12, 20, 0.22);
-    --shadow-md: 0 4px 10px rgba(8, 12, 20, 0.5), 0 8px 20px rgba(8, 12, 20, 0.28);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.24);
 }
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background: linear-gradient(180deg, #162032 0%, var(--bg-primary) 38%, #1a2434 100%);
+    background: linear-gradient(180deg, #1d1f22 0%, var(--bg-primary) 32%, #1b1c1f 100%);
     color: var(--text-primary);
     line-height: 1.5;
     min-height: 100vh;
@@ -47,8 +47,8 @@ body {
 .header {
     text-align: center;
     margin-bottom: 20px;
-    padding: 20px 24px;
-    background: var(--bg-secondary);
+    padding: 24px 24px 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border);
@@ -70,7 +70,7 @@ body {
 .header h1 {
     font-size: 1.85rem;
     font-weight: 700;
-    color: #93b8ff;
+    color: #e8eaed;
     margin-bottom: 2px;
     letter-spacing: -0.5px;
 }
@@ -86,7 +86,7 @@ body {
     gap: 14px;
     margin-bottom: 18px;
     padding: 14px 16px;
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.02);
     border-radius: 10px;
     flex-wrap: wrap;
     border: 1px solid var(--border);
@@ -134,7 +134,7 @@ body {
 }
 
 .filter-group select:hover {
-    border-color: #5b6f93;
+    border-color: #6b7280;
 }
 
 .filter-group select:focus {
@@ -153,10 +153,10 @@ body {
     background: var(--bg-secondary);
     border-radius: 8px;
     padding: 8px 12px;
-    box-shadow: 0 1px 0 rgba(8, 12, 20, 0.45);
+    box-shadow: var(--shadow-sm);
     border: 1px solid var(--border);
     border-left: 3px solid var(--border);
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
     display: grid;
     grid-template-columns: minmax(240px, 2.2fr) minmax(170px, 1.6fr) minmax(180px, 1.3fr) minmax(140px, 0.9fr) minmax(170px, 1.2fr);
     gap: 12px;
@@ -164,7 +164,8 @@ body {
 }
 
 .resource-card:hover {
-    background: #2c3a54;
+    background: #303134;
+    transform: translateY(-1px);
 }
 
 .resource-card.pending {
@@ -208,7 +209,7 @@ body {
 .resource-icon {
     font-size: 0.9rem;
     color: var(--accent-blue);
-    background: var(--accent-blue-light);
+    background: rgba(50, 108, 229, 0.14);
     width: 20px;
     height: 20px;
     display: flex;
@@ -320,26 +321,26 @@ body {
 
 .status-badge.pending {
     background: var(--accent-yellow-light);
-    color: #f5cf72;
-    border: 1px solid #8f7442;
+    color: #f4c96b;
+    border: 1px solid rgba(191, 135, 0, 0.4);
 }
 
 .status-badge.available {
     background: var(--accent-yellow-light);
-    color: #f5cf72;
-    border: 1px solid #8f7442;
+    color: #f4c96b;
+    border: 1px solid rgba(191, 135, 0, 0.4);
 }
 
 .status-badge.updating {
     background: var(--accent-blue-light);
-    color: #9ec0ff;
-    border: 1px solid #5070a8;
+    color: #a8c7fa;
+    border: 1px solid rgba(50, 108, 229, 0.38);
 }
 
 .status-badge.uptodate {
     background: var(--accent-green-light);
-    color: #8ee7ae;
-    border: 1px solid #3c7c55;
+    color: #81c995;
+    border: 1px solid rgba(45, 164, 78, 0.38);
 }
 
 .approval-badge {
@@ -354,21 +355,23 @@ body {
     padding: 6px 12px;
     background-color: var(--accent-blue);
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 6px;
     font-weight: 600;
     font-size: 0.8rem;
     cursor: pointer;
-    transition: background-color 0.2s;
-    box-shadow: 0 1px 0 rgba(8, 12, 20, 0.45);
+    transition: background-color 0.2s, transform 0.2s;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.28);
 }
 
 .approve-btn:hover {
     background-color: var(--accent-blue-hover);
+    transform: translateY(-1px);
 }
 
 .approve-btn:active {
     background-color: #1a4ab0;
+    transform: translateY(0);
 }
 
 .approve-btn.htmx-request {

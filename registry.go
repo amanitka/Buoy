@@ -111,7 +111,6 @@ func (r *Registry) logContainerChange(namespace, name, kind, containerName, imag
 		"namespace", namespace,
 		"kind", kind,
 		"container", containerName,
-		"sha", imageID,
 	)
 }
 
