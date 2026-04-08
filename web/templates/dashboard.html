@@ -3,57 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buoy</title>
-    <link rel="icon" type="image/svg+xml" href="/static/buoy-icon.svg">
-    <link rel="shortcut icon" href="/static/buoy-icon.svg">
-    <link rel="apple-touch-icon" href="/static/buoy-icon.svg">
+    <title>Buoy Dashboard</title>
     <link rel="stylesheet" href="/static/style.css">
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link rel="icon" type="image/svg+xml" href="/static/buoy-icon.svg">
 </head>
 <body>
     <div class="container">
-        <header class="header">
-            <img src="/static/buoy-icon.svg" alt="Buoy" class="header-logo">
+        <div class="header">
+            <img src="/static/buoy-icon.svg" alt="Buoy Logo" class="header-logo">
             <div class="header-content">
-                <h1>Buoy - Image Update Dashboard</h1>
-                <p class="subtitle">Real-time Kubernetes Image Monitoring</p>
+                <h1>Buoy Dashboard</h1>
             </div>
-        </header>
+        </div>
 
         <div class="filters">
             <div class="filter-group">
-                <label>Namespace:</label>
-                <select id="namespaceFilter" onchange="filterResources()">
-                    <option value="all">All Namespaces</option>
-                </select>
-            </div>
-            <div class="filter-group">
-                <label>Status:</label>
+                <label for="statusFilter">Status:</label>
                 <select id="statusFilter" onchange="filterResources()">
-                    <option value="all">All</option>
-                    <option value="PendingApproval">Pending Approval</option>
+                    <option value="all">All Statuses</option>
+                    <option value="UpToDate">Up to Date</option>
+                    <option value="PendingApproval">Pending</option>
                     <option value="UpdateAvailable">Update Available</option>
                     <option value="Updating">Updating</option>
-                    <option value="UpToDate">Up to Date</option>
                 </select>
             </div>
+
             <div class="filter-group">
-                <label>Kind:</label>
+                <label for="namespaceFilter">Namespace:</label>
+                <select id="namespaceFilter" onchange="filterResources()">
+                    <option value="all">All Namespaces</option>
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="kindFilter">Kind:</label>
                 <select id="kindFilter" onchange="filterResources()">
-                    <option value="all">All Types</option>
-                    <option value="Deployment">Deployments</option>
-                    <option value="StatefulSet">StatefulSets</option>
-                    <option value="DaemonSet">DaemonSets</option>
+                    <option value="all">All Kinds</option>
+                    <option value="Deployment">Deployment</option>
+                    <option value="StatefulSet">StatefulSet</option>
+                    <option value="DaemonSet">DaemonSet</option>
                 </select>
             </div>
         </div>
 
         <div class="resources-table-head">
-            <span>Workload</span>
-            <span>Containers</span>
-            <span>Status</span>
-            <span>Action</span>
-            <span>Last Checked</span>
+            <div>Resource</div>
+            <div>Namespace</div>
+            <div>Containers</div>
+            <div>Status</div>
+            <div>Action</div>
         </div>
 
         <div class="resources" id="resourceList">
@@ -62,23 +62,35 @@
                  data-status="{{.Status}}"
                  data-namespace="{{.Namespace}}"
                  data-kind="{{.Kind}}">
+
                 <div class="resource-header">
                     <div class="resource-title">
-                        <span class="resource-icon">{{if eq .Kind "Deployment"}}▣{{else if eq .Kind "StatefulSet"}}≡{{else}}⚙{{end}}</span>
+                        <span class="resource-icon">
+                            {{if eq .Kind "Deployment"}}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+                            {{else if eq .Kind "StatefulSet"}}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                            {{else}}
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                            {{end}}
+                        </span>
                         <h2>{{.Name}}</h2>
                         <span class="resource-kind-badge">{{.Kind}}</span>
                     </div>
-                    <div class="resource-meta">
-                        <span class="badge namespace">{{.Namespace}}</span>
-                        <span class="badge schedule">{{.Schedule}}</span>
-                    </div>
+                </div>
+
+                <div class="resource-meta">
+                    <span class="badge namespace">{{.Namespace}}</span>
+                    {{if .Schedule}}
+                    <span class="badge schedule">{{.Schedule}}</span>
+                    {{end}}
                 </div>
 
                 <div class="containers">
-                    {{range $containerName := .SortedContainerNames}}
+                    {{range $name, $image := .Containers}}
                     <div class="container-info">
-                        <span class="container-icon">◆</span>
-                        <span class="container-name">{{$containerName}}</span>
+                        <svg class="container-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+                        <span class="container-name">{{$name}}</span>
                     </div>
                     {{end}}
                 </div>
@@ -86,19 +98,32 @@
                 <div class="resource-footer">
                     <div class="status-info">
                         {{if eq .Status "PendingApproval"}}
-                        <span class="status-badge pending">⏳ Pending Approval</span>
+                        <span class="status-badge pending">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                            Pending
+                        </span>
                         {{else if eq .Status "UpdateAvailable"}}
-                        <span class="status-badge available">🔄 Update Available</span>
+                        <span class="status-badge available">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                            Available
+                        </span>
                         {{else if eq .Status "Updating"}}
-                        <span class="status-badge updating">⏳ Updating...</span>
+                        <span class="status-badge updating">
+                            <svg class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+                            Updating...
+                        </span>
                         {{else}}
-                        <span class="status-badge uptodate">✅ Up to Date</span>
+                        <span class="status-badge uptodate">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                            Up to Date
+                        </span>
                         {{end}}
                         
                         {{if .RequiresApproval}}
-                        <span class="approval-badge">🔒 Requires Approval</span>
-                        {{else}}
-                        <span class="approval-badge auto">🔓 Auto-Update</span>
+                        <span class="approval-badge">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            Requires Approval
+                        </span>
                         {{end}}
                     </div>
 
@@ -108,22 +133,15 @@
                             hx-vals='{"namespace": "{{.Namespace}}", "kind": "{{.Kind}}", "name": "{{.Name}}"}'
                             hx-swap="outerHTML"
                             hx-target="closest .resource-card">
-                        🚀 Approve & Update
+                        Approve
                     </button>
-                    {{else}}
-                    <span class="action-placeholder">—</span>
                     {{end}}
                 </div>
-
-                {{if .LastChecked}}
-                <div class="last-checked">
-                    Last checked: {{.LastChecked.Format "2006-01-02 15:04:05"}}
-                </div>
-                {{end}}
             </div>
             {{else}}
             <div class="empty-state">
-                <p>🔍 No resources being watched yet.</p>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <p>No resources being watched yet.</p>
                 <p>Add <code>buoy.sh/watch: "true"</code> annotation to your Deployments, StatefulSets, or DaemonSets.</p>
             </div>
             {{end}}
@@ -131,7 +149,6 @@
     </div>
 
     <script>
-        // Populate namespace filter on page load
         function populateNamespaceFilter() {
             const namespaces = new Set();
             document.querySelectorAll('.resource-card').forEach(card => {
@@ -141,10 +158,8 @@
             const select = document.getElementById('namespaceFilter');
             const currentValue = select.value;
             
-            // Keep "All Namespaces" option
             select.innerHTML = '<option value="all">All Namespaces</option>';
             
-            // Add namespace options sorted alphabetically
             Array.from(namespaces).sort().forEach(ns => {
                 const option = document.createElement('option');
                 option.value = ns;
@@ -152,7 +167,6 @@
                 select.appendChild(option);
             });
             
-            // Restore previous selection if it still exists
             if (currentValue !== 'all' && namespaces.has(currentValue)) {
                 select.value = currentValue;
             }
@@ -181,7 +195,6 @@
             });
         }
 
-        // Auto-refresh resources every 30 seconds
         async function refreshResources() {
             try {
                 const response = await fetch('/api/resources');
@@ -206,13 +219,15 @@
 
                 container.innerHTML = orderedResources.map(res => renderResource(res)).join('');
                 
-                // Restore filters
                 document.getElementById('statusFilter').value = currentFilters.status;
                 document.getElementById('kindFilter').value = currentFilters.kind;
                 
                 populateNamespaceFilter();
                 document.getElementById('namespaceFilter').value = currentFilters.namespace;
                 filterResources();
+
+                // Re-initialize HTMX on new content
+                htmx.process(container);
             } catch (error) {
                 console.error('Failed to refresh resources:', error);
             }
@@ -223,45 +238,51 @@
                                (res.Status === 'UpdateAvailable' ? 'update-available' : 
                                (res.Status === 'Updating' ? 'updating' : 'up-to-date'));
             const statusData = res.Status;
-            const icon = res.Kind === 'Deployment' ? '▣' : (res.Kind === 'StatefulSet' ? '≡' : '⚙');
+
+            let iconSvg = '';
+            if (res.Kind === 'Deployment') {
+                iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>';
+            } else if (res.Kind === 'StatefulSet') {
+                iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>';
+            } else {
+                iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+            }
             
             const containers = Object.keys(res.Containers || {}).sort((a, b) => a.localeCompare(b)).map(name => 
-                `<div class="container-info"><span class="container-icon">◆</span><span class="container-name">${name}</span></div>`
+                `<div class="container-info"><svg class="container-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg><span class="container-name">${name}</span></div>`
             ).join('');
             
             let statusBadge = '';
             if (res.Status === 'PendingApproval') {
-                statusBadge = '<span class="status-badge pending">⏳ Pending Approval</span>';
+                statusBadge = '<span class="status-badge pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Pending</span>';
             } else if (res.Status === 'UpdateAvailable') {
-                statusBadge = '<span class="status-badge available">🔄 Update Available</span>';
+                statusBadge = '<span class="status-badge available"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg> Available</span>';
             } else if (res.Status === 'Updating') {
-                statusBadge = '<span class="status-badge updating">⏳ Updating...</span>';
+                statusBadge = '<span class="status-badge updating"><svg class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Updating...</span>';
             } else {
-                statusBadge = '<span class="status-badge uptodate">✅ Up to Date</span>';
+                statusBadge = '<span class="status-badge uptodate"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Up to Date</span>';
             }
             
             const approvalBadge = res.RequiresApproval ?
-                '<span class="approval-badge">🔒 Requires Approval</span>' :
-                '<span class="approval-badge auto">🔓 Auto-Update</span>';
+                '<span class="approval-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Requires Approval</span>' : '';
+            
+            const scheduleBadge = res.Schedule ? `<span class="badge schedule">${res.Schedule}</span>` : '';
             
             const approveButton = res.Status === 'PendingApproval' ?
-                `<button class="approve-btn" onclick="approveUpdate('${res.Namespace}', '${res.Kind}', '${res.Name}')">🚀 Approve & Update</button>` : '<span class="action-placeholder">—</span>';
-            
-            const lastChecked = res.LastChecked ? 
-                `<div class="last-checked">Last checked: ${new Date(res.LastChecked).toLocaleString()}</div>` : '';
+                `<button class="approve-btn" hx-post="/api/resources/approve" hx-vals='{"namespace": "${res.Namespace}", "kind": "${res.Kind}", "name": "${res.Name}"}' hx-swap="outerHTML" hx-target="closest .resource-card">Approve</button>` : '';
             
             return `
                 <div class="resource-card ${statusClass}" data-status="${statusData}" data-namespace="${res.Namespace}" data-kind="${res.Kind}">
                     <div class="resource-header">
                         <div class="resource-title">
-                            <span class="resource-icon">${icon}</span>
+                            <span class="resource-icon">${iconSvg}</span>
                             <h2>${res.Name}</h2>
                             <span class="resource-kind-badge">${res.Kind}</span>
                         </div>
-                        <div class="resource-meta">
-                            <span class="badge namespace">${res.Namespace}</span>
-                            <span class="badge schedule">${res.Schedule}</span>
-                        </div>
+                    </div>
+                    <div class="resource-meta">
+                        <span class="badge namespace">${res.Namespace}</span>
+                        ${scheduleBadge}
                     </div>
                     <div class="containers">${containers}</div>
                     <div class="resource-footer">
@@ -271,36 +292,13 @@
                         </div>
                         ${approveButton}
                     </div>
-                    ${lastChecked}
                 </div>
             `;
         }
 
-        async function approveUpdate(namespace, kind, name) {
-            try {
-                const response = await fetch('/api/resources/approve', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ namespace, kind, name })
-                });
-                
-                if (response.ok) {
-                    await refreshResources();
-                } else {
-                    alert('Failed to approve update');
-                }
-            } catch (error) {
-                console.error('Failed to approve update:', error);
-                alert('Failed to approve update');
-            }
-        }
-
-        // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
             populateNamespaceFilter();
             filterResources();
-            
-            // Auto-refresh every 30 seconds
             setInterval(refreshResources, 30000);
         });
     </script>

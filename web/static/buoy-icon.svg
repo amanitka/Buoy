@@ -1,30 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="100%" height="100%" role="img" aria-labelledby="buoyTitle buoyDesc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="100%" height="100%" role="img" aria-labelledby="buoyTitle buoyDesc">
   <title id="buoyTitle">Buoy icon</title>
-  <desc id="buoyDesc">Kubernetes-blue buoy emblem in a hexagonal badge.</desc>
+  <desc id="buoyDesc">Geometric kubernetes-blue buoy emblem.</desc>
   <defs>
-    <linearGradient id="hexGradient" x1="0" y1="0" x2="1" y2="1">
+    <!-- Base Gradients -->
+    <linearGradient id="baseLeft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2558c6"/>
+      <stop offset="100%" stop-color="#1f4ba8"/>
+    </linearGradient>
+    <linearGradient id="baseRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#173a82"/>
+      <stop offset="100%" stop-color="#132f6b"/>
+    </linearGradient>
+
+    <!-- Structure Dark -->
+    <linearGradient id="structLeft" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1c305e"/>
+      <stop offset="100%" stop-color="#17284f"/>
+    </linearGradient>
+    <linearGradient id="structRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#121e3d"/>
+      <stop offset="100%" stop-color="#0c1429"/>
+    </linearGradient>
+
+    <!-- Top Dome Gradients -->
+    <linearGradient id="domeLeft" x1="0" y1="0" x2="1" y2="0">
       <stop offset="0%" stop-color="#4a86f7"/>
-      <stop offset="100%" stop-color="#2558c6"/>
+      <stop offset="100%" stop-color="#326ce5"/>
     </linearGradient>
-    <linearGradient id="coreGradient" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#dce8ff"/>
+    <linearGradient id="domeRight" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#2558c6"/>
+      <stop offset="100%" stop-color="#1f4ba8"/>
     </linearGradient>
-    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#163a75" flood-opacity="0.35"/>
-    </filter>
   </defs>
 
-  <polygon points="64,8 112,36 112,92 64,120 16,92 16,36" fill="url(#hexGradient)" filter="url(#softShadow)"/>
-  <polygon points="64,16 105,40 105,88 64,112 23,88 23,40" fill="#1f3f81" opacity="0.35"/>
+  <!-- BACKGROUND BASE -->
+  <!-- Left Side (Lighter Blue) -->
+  <path d="M 50 190 C 50 170 128 170 128 170 L 128 230 C 128 230 50 230 50 210 Z" fill="url(#baseLeft)"/>
+  <!-- Right Side (Darker Blue) -->
+  <path d="M 206 190 C 206 170 128 170 128 170 L 128 230 C 128 230 206 230 206 210 Z" fill="url(#baseRight)"/>
 
-  <g transform="translate(64 67)">
-    <circle cx="0" cy="-28" r="10" fill="none" stroke="url(#coreGradient)" stroke-width="6"/>
-    <rect x="-4" y="-23" width="8" height="40" rx="4" fill="url(#coreGradient)"/>
-    <rect x="-20" y="-10" width="40" height="8" rx="4" fill="url(#coreGradient)"/>
-    <path d="M-26 18a26 26 0 0 0 52 0h-8a18 18 0 0 1-36 0z" fill="url(#coreGradient)"/>
-    <path d="M-26 18l8-13 6 13zm52 0l-8-13-6 13z" fill="url(#coreGradient)"/>
+  <!-- TOWER LEGS -->
+  <!-- Left Main Leg -->
+  <polygon points="100 80, 115 80, 85 180, 70 180" fill="url(#structLeft)" />
+  <!-- Right Main Leg -->
+  <polygon points="156 80, 141 80, 171 180, 186 180" fill="url(#structRight)" />
+
+  <!-- Central Column (Left and Right halves) -->
+  <polygon points="120 80, 128 80, 128 180, 115 180" fill="url(#structLeft)" />
+  <polygon points="136 80, 128 80, 128 180, 141 180" fill="url(#structRight)" />
+
+  <!-- Horizontal Braces Left -->
+  <polygon points="92 110, 128 110, 128 120, 89 120" fill="url(#structLeft)" />
+  <polygon points="82 145, 128 145, 128 155, 78 155" fill="url(#structLeft)" />
+
+  <!-- Horizontal Braces Right -->
+  <polygon points="164 110, 128 110, 128 120, 167 120" fill="url(#structRight)" />
+  <polygon points="174 145, 128 145, 128 155, 178 155" fill="url(#structRight)" />
+
+  <!-- TOP CROSSBAR AND ORBS -->
+  <!-- Crossbar Left -->
+  <rect x="80" y="80" width="48" height="15" fill="url(#structLeft)" />
+  <!-- Crossbar Right -->
+  <rect x="128" y="80" width="48" height="15" fill="url(#structRight)" />
+
+  <!-- Orbs Outer (Left/Right) -->
+  <circle cx="80" cy="87.5" r="20" fill="url(#structLeft)" />
+  <circle cx="176" cy="87.5" r="20" fill="url(#structRight)" />
+
+  <!-- Orbs Inner Cutouts (White/Transparent) -->
+  <circle cx="80" cy="87.5" r="8" fill="#ffffff" />
+  <circle cx="176" cy="87.5" r="8" fill="#ffffff" />
+
+  <!-- TOP DOME -->
+  <!-- Left Half Dome -->
+  <path d="M 108 80 C 108 55 128 55 128 55 L 128 80 Z" fill="url(#domeLeft)" />
+  <!-- Right Half Dome -->
+  <path d="M 148 80 C 148 55 128 55 128 55 L 128 80 Z" fill="url(#domeRight)" />
+
+  <!-- LIGHT RAYS (Orange/Yellow) -->
+  <g fill="#FFA000" stroke="#FFC107" stroke-width="2">
+    <!-- Center Ray -->
+    <rect x="123" y="15" width="10" height="25" rx="5" />
+    <!-- Left Ray -->
+    <path d="M 90 40 L 105 55 L 100 60 L 85 45 Z" rx="5" />
+    <!-- Right Ray -->
+    <path d="M 166 40 L 151 55 L 156 60 L 171 45 Z" rx="5" />
   </g>
+  <circle cx="92.5" cy="47.5" r="5" fill="#FFC107" />
+  <circle cx="163.5" cy="47.5" r="5" fill="#FFC107" />
 
-  <circle cx="95" cy="35" r="5" fill="#7fb1ff" opacity="0.9"/>
 </svg>
