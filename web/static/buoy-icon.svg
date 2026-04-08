@@ -78,14 +78,18 @@
   <path d="M 148 80 C 148 55 128 55 128 55 L 128 80 Z" fill="url(#domeRight)" />
 
   <!-- LIGHT RAYS (Orange/Yellow) -->
+  <!-- The center point of the dome is roughly (128, 55).
+       We position capsules relative to this point -->
   <g fill="#FFA000" stroke="#FFC107" stroke-width="2">
     <!-- Center Ray -->
-    <rect x="123" y="15" width="10" height="25" rx="5" />
-    <!-- Left Ray -->
-    <path d="M 90 40 L 105 55 L 100 60 L 85 45 Z" rx="5" />
-    <!-- Right Ray -->
-    <path d="M 166 40 L 151 55 L 156 60 L 171 45 Z" rx="5" />
+    <rect x="123" y="10" width="10" height="25" rx="5" />
+    <!-- Left Ray (rotated -45 deg around 128, 55) -->
+    <rect x="123" y="10" width="10" height="25" rx="5" transform="rotate(-45 128 55)" />
+    <!-- Right Ray (rotated +45 deg around 128, 55) -->
+    <rect x="123" y="10" width="10" height="25" rx="5" transform="rotate(45 128 55)" />
   </g>
+
+  <!-- The two original dot lights from image.png reference -->
   <circle cx="92.5" cy="47.5" r="5" fill="#FFC107" />
   <circle cx="163.5" cy="47.5" r="5" fill="#FFC107" />
 
