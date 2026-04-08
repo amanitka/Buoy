@@ -125,6 +125,14 @@ func (s *Scheduler) compareImageSHA(res *ObservedResource, containerName, image,
 	res.LastChecked = time.Now()
 	if liveSHA != "" && remoteSHA != "" && liveSHA != remoteSHA {
 		s.handleImageMismatch(res, containerName, image, liveSHA, remoteSHA)
+	} else if liveSHA != "" && remoteSHA != "" && liveSHA == remoteSHA {
+		if res.Status == "Updating" {
+			if expectedRemoteSHA, ok := res.RemoteSHA[containerName]; ok && expectedRemoteSHA == liveSHA {
+				res.Status = "UpToDate"
+				res.UpdateAvailable = false
+				res.PendingApproval = false
+			}
+		}
 	}
 }
 
