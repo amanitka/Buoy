@@ -20,6 +20,7 @@ type ObservedResource struct {
 	LiveSHA           map[string]string
 	Status            string
 	LatestPodCreation time.Time
+	UpdatingSince     time.Time
 }
 
 func (r *ObservedResource) SortedContainerNames() []string {

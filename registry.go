@@ -79,13 +79,18 @@ func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID
 	newLiveSHA := extractSHAFromImageID(imageID)
 	res.LiveSHA[containerName] = newLiveSHA
 
-	// If we are updating, check if the new pod brings us to the desired state
+	// If we are updating, check if the new pod brings us to the desired state or timeout
 	if res.Status == "Updating" {
-		if expectedRemoteSHA, ok := res.RemoteSHA[containerName]; ok {
-			if newLiveSHA == expectedRemoteSHA {
-				res.Status = "UpToDate"
-				res.UpdateAvailable = false
-				res.PendingApproval = false
+		timeoutReached := !res.UpdatingSince.IsZero() && time.Since(res.UpdatingSince) > 5*time.Minute
+		expectedRemoteSHA, ok := res.RemoteSHA[containerName]
+
+		if (ok && newLiveSHA == expectedRemoteSHA) || timeoutReached {
+			res.Status = "UpToDate"
+			res.UpdateAvailable = false
+			res.PendingApproval = false
+			res.UpdatingSince = time.Time{}
+			if timeoutReached {
+				slog.Info("⏳ Update timeout reached, marking as up-to-date", "resource", name, "namespace", namespace, "kind", kind)
 			}
 		}
 	}
@@ -146,6 +151,7 @@ func (r *Registry) MarkUpdating(namespace, name, kind string) {
 		res.Status = "Updating"
 		res.UpdateAvailable = false
 		res.PendingApproval = false
+		res.UpdatingSince = time.Now()
 	}
 }
 

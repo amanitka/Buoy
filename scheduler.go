@@ -123,14 +123,25 @@ func (s *Scheduler) compareImageSHA(res *ObservedResource, containerName, image,
 	}
 	liveSHA := extractSHA(liveImageID)
 	res.LastChecked = time.Now()
-	if liveSHA != "" && remoteSHA != "" && liveSHA != remoteSHA {
+
+	timeoutReached := false
+	if res.Status == "Updating" && !res.UpdatingSince.IsZero() && time.Since(res.UpdatingSince) > 5*time.Minute {
+		timeoutReached = true
+	}
+
+	if liveSHA != "" && remoteSHA != "" && liveSHA != remoteSHA && !timeoutReached {
 		s.handleImageMismatch(res, containerName, image, liveSHA, remoteSHA)
-	} else if liveSHA != "" && remoteSHA != "" && liveSHA == remoteSHA {
+	} else if (liveSHA != "" && remoteSHA != "" && liveSHA == remoteSHA) || timeoutReached {
 		if res.Status == "Updating" {
-			if expectedRemoteSHA, ok := res.RemoteSHA[containerName]; ok && expectedRemoteSHA == liveSHA {
+			expectedRemoteSHA, ok := res.RemoteSHA[containerName]
+			if (ok && expectedRemoteSHA == liveSHA) || timeoutReached {
 				res.Status = "UpToDate"
 				res.UpdateAvailable = false
 				res.PendingApproval = false
+				res.UpdatingSince = time.Time{}
+				if timeoutReached {
+					slog.Info("⏳ Update timeout reached, marking as up-to-date", "resource", res.Name, "namespace", res.Namespace, "kind", res.Kind)
+				}
 			}
 		}
 	}
