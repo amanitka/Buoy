@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -95,20 +96,44 @@ func (s *Server) handleApproveUpdate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	var req struct {
-		Namespace string `json:"namespace"`
-		Kind      string `json:"kind"`
-		Name      string `json:"name"`
+
+	var namespace, kind, name string
+
+	contentType := r.Header.Get("Content-Type")
+	if strings.Contains(contentType, "application/json") {
+		var req struct {
+			Namespace string `json:"namespace"`
+			Kind      string `json:"kind"`
+			Name      string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid JSON request body", http.StatusBadRequest)
+			return
+		}
+		namespace = req.Namespace
+		kind = req.Kind
+		name = req.Name
+	} else {
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "Invalid form request body", http.StatusBadRequest)
+			return
+		}
+		namespace = r.FormValue("namespace")
+		kind = r.FormValue("kind")
+		name = r.FormValue("name")
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+
+	if namespace == "" || kind == "" || name == "" {
+		http.Error(w, "Missing required fields", http.StatusBadRequest)
 		return
 	}
-	if err := s.approveAndUpdate(req.Namespace, req.Name, req.Kind); err != nil {
+
+	if err := s.approveAndUpdate(namespace, name, kind); err != nil {
 		slog.Error("Approval failed", "error", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("HX-Trigger", "refreshResources")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
 }

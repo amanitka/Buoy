@@ -269,7 +269,7 @@
             const scheduleBadge = res.Schedule ? `<span class="badge schedule">${res.Schedule}</span>` : '';
             
             const approveButton = res.Status === 'PendingApproval' ?
-                `<button class="approve-btn" hx-post="/api/resources/approve" hx-vals='{"namespace": "${res.Namespace}", "kind": "${res.Kind}", "name": "${res.Name}"}' hx-swap="outerHTML" hx-target="closest .resource-card">Approve</button>` : '';
+                `<button class="approve-btn" hx-post="/api/resources/approve" hx-vals='{"namespace": "${res.Namespace}", "kind": "${res.Kind}", "name": "${res.Name}"}' hx-swap="none">Approve</button>` : '';
             
             return `
                 <div class="resource-card ${statusClass}" data-status="${statusData}" data-namespace="${res.Namespace}" data-kind="${res.Kind}">
@@ -300,6 +300,10 @@
             populateNamespaceFilter();
             filterResources();
             setInterval(refreshResources, 30000);
+
+            document.body.addEventListener("refreshResources", function(evt){
+                refreshResources();
+            });
         });
     </script>
 </body>
