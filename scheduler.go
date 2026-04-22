@@ -135,13 +135,15 @@ func (s *Scheduler) compareImageSHA(res *ObservedResource, containerName, image,
 		if res.Status == "Updating" {
 			expectedRemoteSHA, ok := res.RemoteSHA[containerName]
 			if (ok && expectedRemoteSHA == liveSHA) || timeoutReached {
-				res.Status = "UpToDate"
+				if timeoutReached {
+					res.Status = "Updated (Unverified)"
+					slog.Info("⏳ Update timeout reached, marking as unverified", "resource", res.Name, "namespace", res.Namespace, "kind", res.Kind)
+				} else {
+					res.Status = "UpToDate"
+				}
 				res.UpdateAvailable = false
 				res.PendingApproval = false
 				res.UpdatingSince = time.Time{}
-				if timeoutReached {
-					slog.Info("⏳ Update timeout reached, marking as up-to-date", "resource", res.Name, "namespace", res.Namespace, "kind", res.Kind)
-				}
 			}
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
@@ -20,10 +21,11 @@ import (
 )
 
 type Client struct {
-	clientset       *kubernetes.Clientset
-	informerFactory informers.SharedInformerFactory
-	registry        *Registry
-	config          *Config
+	clientset        *kubernetes.Clientset
+	informerFactory  informers.SharedInformerFactory
+	registry         *Registry
+	config           *Config
+	replicaSetLister appsv1listers.ReplicaSetLister
 }
 
 func extractBuoyAnnotations(annotations map[string]string) map[string]string {
@@ -60,10 +62,11 @@ func NewClient(config *Config) (*Client, error) {
 	}
 	informerFactory := informers.NewSharedInformerFactory(clientset, 30*time.Second)
 	return &Client{
-		clientset:       clientset,
-		informerFactory: informerFactory,
-		registry:        NewRegistry(),
-		config:          config,
+		clientset:        clientset,
+		informerFactory:  informerFactory,
+		registry:         NewRegistry(),
+		config:           config,
+		replicaSetLister: informerFactory.Apps().V1().ReplicaSets().Lister(),
 	}, nil
 }
 
@@ -72,6 +75,7 @@ func (c *Client) Start(ctx context.Context) error {
 	c.setupDeploymentInformer()
 	c.setupStatefulSetInformer()
 	c.setupDaemonSetInformer()
+	c.informerFactory.Apps().V1().ReplicaSets().Informer() // ensure it is started
 	c.informerFactory.Start(ctx.Done())
 	synced := c.informerFactory.WaitForCacheSync(ctx.Done())
 	for informerType, ok := range synced {
@@ -152,10 +156,14 @@ func (c *Client) getGrandparent(pod *corev1.Pod) (string, string, string) {
 }
 
 func (c *Client) resolveReplicaSetOwner(namespace, rsName string) (string, string, string) {
-	rs, err := c.clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), rsName, metav1.GetOptions{})
+	rs, err := c.replicaSetLister.ReplicaSets(namespace).Get(rsName)
 	if err != nil {
-		slog.Debug("Failed to resolve ReplicaSet owner", "namespace", namespace, "replicaset", rsName, "error", err)
-		return "", "", ""
+		// Fallback to API if not in cache yet
+		rs, err = c.clientset.AppsV1().ReplicaSets(namespace).Get(context.Background(), rsName, metav1.GetOptions{})
+		if err != nil {
+			slog.Debug("Failed to resolve ReplicaSet owner", "namespace", namespace, "replicaset", rsName, "error", err)
+			return "", "", ""
+		}
 	}
 	if len(rs.OwnerReferences) == 0 {
 		return "", "", ""
