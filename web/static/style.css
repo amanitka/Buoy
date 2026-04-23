@@ -152,6 +152,10 @@ body {
     animation: pulse-border 2s infinite;
 }
 
+.resource-card.unverified {
+    border-left-color: var(--accent-yellow);
+}
+
 @keyframes pulse-border {
     0% { border-left-color: rgba(50, 108, 229, 0.4); }
     50% { border-left-color: var(--accent-blue); }
@@ -263,6 +267,12 @@ body {
     background-color: rgba(50, 108, 229, 0.1);
     color: #8ab4f8;
     border: 1px solid rgba(50, 108, 229, 0.2);
+}
+
+.status-badge.unverified {
+    background-color: rgba(255, 179, 0, 0.1);
+    color: #fdd663;
+    border: 1px solid rgba(255, 179, 0, 0.2);
 }
 
 .spin {

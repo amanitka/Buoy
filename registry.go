@@ -85,13 +85,15 @@ func (r *Registry) UpdateContainer(namespace, name, kind, containerName, imageID
 		expectedRemoteSHA, ok := res.RemoteSHA[containerName]
 
 		if (ok && newLiveSHA == expectedRemoteSHA) || timeoutReached {
-			res.Status = "UpToDate"
+			if timeoutReached {
+				res.Status = "Updated (Unverified)"
+				slog.Info("⏳ Update timeout reached, marking as unverified", "resource", name, "namespace", namespace, "kind", kind)
+			} else {
+				res.Status = "UpToDate"
+			}
 			res.UpdateAvailable = false
 			res.PendingApproval = false
 			res.UpdatingSince = time.Time{}
-			if timeoutReached {
-				slog.Info("⏳ Update timeout reached, marking as up-to-date", "resource", name, "namespace", namespace, "kind", kind)
-			}
 		}
 	}
 
@@ -145,13 +147,32 @@ func (r *Registry) MarkUpdateAvailable(namespace, name, kind, containerName, rem
 
 func (r *Registry) MarkUpdating(namespace, name, kind string) {
 	r.mu.Lock()
-	defer r.mu.Unlock()
 	key := r.getKey(namespace, name, kind)
-	if res, exists := r.resources[key]; exists {
+	res, exists := r.resources[key]
+	if exists {
 		res.Status = "Updating"
 		res.UpdateAvailable = false
 		res.PendingApproval = false
-		res.UpdatingSince = time.Now()
+		updatingSince := time.Now()
+		res.UpdatingSince = updatingSince
+		r.mu.Unlock()
+
+		go func() {
+			time.Sleep(5 * time.Minute)
+			r.mu.Lock()
+			defer r.mu.Unlock()
+			if res, stillExists := r.resources[key]; stillExists {
+				if res.Status == "Updating" && res.UpdatingSince.Equal(updatingSince) {
+					res.Status = "Updated (Unverified)"
+					res.UpdateAvailable = false
+					res.PendingApproval = false
+					res.UpdatingSince = time.Time{}
+					slog.Info("⏳ Update timeout reached (via goroutine), marking as unverified", "resource", name, "namespace", namespace, "kind", kind)
+				}
+			}
+		}()
+	} else {
+		r.mu.Unlock()
 	}
 }
 
